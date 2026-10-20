@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+coverage/
+.expo/
+docs/
+*.dump
+*.sql
+package-lock.json
+

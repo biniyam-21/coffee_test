@@ -1,0 +1,43 @@
+{
+  "name": "akufada-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Coffee Shop Order Management System - Monorepo Workspace",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "build:shared": "npm run build -w @akufada/shared",
+    "build:backend": "npm run build -w @akufada/backend",
+    "build:web": "npm run build -w @akufada/web",
+    "build:mock": "npm run build -w @akufada/mock-payment",
+    "dev:backend": "npm run dev -w @akufada/backend",
+    "dev:web": "npm run dev -w @akufada/web",
+    "dev:mobile": "npm run dev -w @akufada/mobile",
+    "dev:mock": "npm run dev -w @akufada/mock-payment",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:unit": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e -w @akufada/backend --if-present",
+    "prisma:generate": "npm run prisma:generate -w @akufada/backend",
+    "prisma:migrate": "npm run prisma:migrate -w @akufada/backend",
+    "prisma:deploy": "npm run prisma:deploy -w @akufada/backend",
+    "prisma:seed": "npm run prisma:seed -w @akufada/backend",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build",
+    "postinstall": "node -e \"const fs=require('fs'); ['apps/web/node_modules/react','apps/web/node_modules/react-dom'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true})}catch(e){}})\""
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
+    "prettier": "^3.2.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router-dom": "^6.30.6",
+    "typescript": "^5.3.3"
+  }
+}
