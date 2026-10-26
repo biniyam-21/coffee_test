@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Akufada",
+    "slug": "akufada-coffee-shop",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF8F5",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#58259A"
+      }
+    },
+    "web": {},
+    "plugins": [
+      "expo-secure-store",
+      "expo-status-bar"
+    ]
+  }
+}
