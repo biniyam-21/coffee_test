@@ -68,6 +68,88 @@ Server calculates price/tax; client-supplied totals are not part of the DTO. Dup
 
 Order initialization calls Chapa inside POST /orders when provider is CHAPA; checkout URL is returned with the order result. Use the active test private/secret key only in backend environment; never include it in request examples, client variables or evidence.
 
+## Sanitized request and response examples
+
+These examples are shaped from DTOs and service return objects. They are documentation examples, not captured API results. IDs and identities are synthetic; token values are redacted.
+
+### Authentication
+
+POST auth/register request:
+
+    {"email":"new-customer@example.test","password":"<candidate-supplied-test-only>","fullName":"Demo Customer","phoneNumber":"+251911223344"}
+
+POST auth/login request:
+
+    {"email":"new-customer@example.test","password":"<candidate-supplied-test-only>"}
+
+POST auth/refresh request:
+
+    {"refreshToken":"<redacted-refresh-token>"}
+
+Register and login return the AuthResponse structure:
+
+    {"user":{"id":"<uuid>","email":"new-customer@example.test","fullName":"Demo Customer","phoneNumber":"+251911223344","roles":["CUSTOMER"]},"tokens":{"accessToken":"<redacted>","refreshToken":"<redacted>","expiresIn":900}}
+
+GET auth/me returns the user object without tokens. POST auth/logout returns 204 with no response body.
+
+### Catalog and product administration
+
+GET products example: /api/v1/products?search=latte&page=1&limit=20&sortBy=name&sortOrder=ASC. GET categories has no input. GET products/{id} uses the UUID path value.
+
+Representative catalog item and page shape:
+
+    {"data":[{"id":"<uuid>","name":"Demo Latte","slug":"demo-latte","description":"Synthetic test product","basePriceCents":500,"imageUrl":null,"category":{"id":"<uuid>","name":"Hot Coffee","slug":"hot-coffee"},"inventory":{"inStock":true,"availableQuantity":12},"createdAt":"<ISO timestamp>"}],"meta":{"total":1,"page":1,"limit":20,"totalPages":1,"hasNextPage":false,"hasPrevPage":false}}
+
+POST admin/products request:
+
+    {"categoryId":"<category-uuid>","name":"Demo Latte","slug":"demo-latte","description":"Synthetic test product","basePriceCents":500,"initialStock":12}
+
+PATCH admin/products/{id} accepts only UpdateProductDto fields. POST returns the created product from Prisma; PATCH returns updated product data. Exact nested relation shape depends on the service return path; confirm it in Swagger before presenting a capture. GET products/{id} returns product fields, category, inventory.inStock, inventory.availableQuantity, createdAt and updatedAt.
+
+### Orders and staff
+
+POST orders request and successful order response shape:
+
+    {"items":[{"productId":"<product-uuid>","quantity":2}],"customerNotes":"Oat milk","payment":{"provider":"CASH_ON_PICKUP"}}
+
+    {"id":"<uuid>","orderNumber":"ORD-<generated>","status":"CONFIRMED","subtotalCents":1000,"taxCents":150,"totalCents":1150,"customerNotes":"Oat milk","createdAt":"<ISO timestamp>","items":[{"id":"<uuid>","productId":"<uuid>","productName":"Demo Latte","unitPriceCents":500,"quantity":2,"lineTotalCents":1000}],"payment":{"transactionId":"<generated-reference>","status":"PENDING","provider":"CASH_ON_PICKUP"}}
+
+For CHAPA, the same order response includes checkoutUrl and remains pending until server verification. GET orders uses QueryOrdersDto and returns the service's paginated order collection; GET orders/{id} returns order details; GET orders/{id}/track returns the status timeline. Those reads require an authenticated role and enforce ownership for customers. POST orders/{id}/cancel request may be empty or include {"reason":"Changed mind before preparation"}; a successful response is the updated cancellation result from OrdersService.
+
+GET staff/orders optionally accepts ?status=CONFIRMED. PATCH staff/orders/{id}/status request:
+
+    {"status":"IN_PREPARATION","notes":"Started preparing the order"}
+
+It returns the updated order status record from the service; invalid state transitions return a client error.
+
+### Inventory, users, reports and audit
+
+GET admin/inventory returns an array of inventory records with product metadata, quantity, lowStockThreshold, isLowStock and updatedAt.
+
+POST admin/inventory/adjust request:
+
+    {"productId":"<product-uuid>","quantityDelta":5,"reason":"RESTOCK_PURCHASE","notes":"Synthetic test restock"}
+
+The response is the inventory adjustment result returned by InventoryService. GET admin/users returns data and pagination metadata with roles and without password/token fields. PATCH admin/users/{id} example:
+
+    {"fullName":"Demo Customer","isActive":true,"roles":["CUSTOMER"]}
+
+GET admin/audit-events supports entityName, action, userId, page and limit filters and returns data/meta; each event contains action, entity, actor (or null), old/new values and timestamp. GET admin/reports/sales accepts QuerySalesReportDto date/range parameters and returns aggregated sales data. The concrete report fields should be copied from the running OpenAPI response after verification; no runtime response was captured for this package.
+
+### Payment and health
+
+POST admin/payments/chapa/reconcile request:
+
+    {"limit":25}
+
+Its service result has the shape {"examined":0,"updated":0,"unchanged":0,"errors":0}. The values above are shape examples, not a successful reconciliation result. Chapa callback and customer verification return a verified state result with txRef, paymentStatus, orderStatus and changed. A valid webhook returns received plus event and result. POST webhook body must be signed and must not be replayed using an invented test signature.
+
+GET health/live response shape:
+
+    {"status":"ok","instance":"api-node-1","uptimeSeconds":120,"timestamp":"<ISO timestamp>","environment":"development"}
+
+GET health/ready returns status, instance, checks.process, checks.database and timestamp; the status code is 200 when database is connected and 503 when degraded.
+
 ## Health endpoints
 
 | Method and path | Access | Behavior |
