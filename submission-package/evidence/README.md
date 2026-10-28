@@ -1,6 +1,6 @@
 # Evidence Register and Capture Checklist
 
-No runtime evidence was generated for this package. The following list describes what to capture. Store only genuine, sanitized outputs under this folder. Keep originals unchanged outside the package if needed for audit. Do not create evidence files from expected results or screenshots of mock screens.
+A summarized record of the web/backend unit test runs and the blocked disposable database E2E attempt is in automated-tests/2026-10-29-unit-test-run.md. Full raw runner logs were not saved. Other items below still require genuine evidence. Store only sanitized outputs under this folder. Keep originals unchanged outside the package if needed for audit. Do not create evidence files from expected results or screenshots of mock screens.
 
 | Folder / evidence | Supports | Capture and success criteria | Redact |
 |---|---|---|---|
@@ -28,4 +28,4 @@ No runtime evidence was generated for this package. The following list describes
 - [ ] Docker service/health and gateway routing.
 - [ ] Actual automated test summaries, load-balancing, restore, and rollback outputs.
 
-Evidence status at package creation: EVIDENCE REQUIRED for all runtime and live demonstration items above.
+Evidence status at package creation: unit-test summary is recorded, including failures and warnings; database E2E was blocked. Full runner logs, API/runtime, security, restore, deployment, load balancing, mobile and live demonstration evidence remain EVIDENCE REQUIRED.

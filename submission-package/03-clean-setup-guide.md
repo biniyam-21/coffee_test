@@ -4,7 +4,7 @@ This procedure is intended for an isolated assessment machine and synthetic data
 
 ## 1. Prerequisites
 
-- Windows 10/11, PowerShell, Git, Node.js 20 or 22 and npm (the CI matrix is Node 20.x/22.x).
+- Windows 10/11, PowerShell, Git, Node.js 20 or 22 and npm 10 or later (the README prerequisite and CI matrix specify Node 20.x/22.x; npm version could not be resolved in this session).
 - Docker Desktop with Compose v2 for PostgreSQL or full Compose deployment.
 - A web browser. For mobile, Expo Go compatible with the SDK in the current mobile app; Expo SDK 58 is declared in apps/mobile/package.json.
 - A Chapa sandbox account only if demonstrating hosted payment. Payment provider testing is optional for the non-Chapa payment selections.

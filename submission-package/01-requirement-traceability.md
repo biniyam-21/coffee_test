@@ -1,16 +1,16 @@
 # Requirement Traceability
 
-Status describes source inspection unless runtime evidence is explicitly named. No runtime verification was performed while preparing this package. “Implemented but not runtime-verified” means relevant code/configuration is present, not that the feature passed a demonstration.
+Status describes source inspection unless runtime evidence is explicitly named. Limited web and backend unit suites were executed; the web suite passed and the backend suite has two failures. The database E2E run was blocked by unavailable Docker Desktop. Other items remain unverified. “Implemented but not runtime-verified” means relevant code/configuration is present, not that the feature passed a demonstration.
 
 | Requirement | Status | Source and evidence | Verification / remaining work |
 |---|---|---|---|
 | Registration, sign-in, refresh, sign-out, profile | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | apps/backend/src/auth/; web auth pages; mobile auth modals and AuthContext | Run valid/invalid auth tests and show both client sign-in flows. |
 | Menu listing, category filtering, search, product details | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | products.controller.ts; web MenuPage.tsx; mobile MenuScreen.tsx | Runtime API and client checks required. |
 | Item customization | PARTIALLY IMPLEMENTED | Order DTO supports customerNotes; product/item snapshots exist. | Structured per-item customization options and persisted fields are not present in the inspected DTO/schema. Show notes or document the gap. |
-| Customer order placement | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | orders.controller.ts, orders.service.ts, order DTO/schema | Execute order against disposable PostgreSQL and verify payment-path outcomes. |
+| Customer order placement | PARTIALLY IMPLEMENTED | orders.controller.ts, orders.service.ts, order DTO/schema; backend order suite reports 2 failures in cancellation tests | Successful order behavior is covered by source tests but not verified in this run. E2E setup was blocked because Docker Desktop was unavailable. |
 | Duplicate request prevention | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | idempotency.service.ts, IdempotencyKey; Idempotency-Key request header | E2E script includes related checks; run it. |
 | Inventory consistency / concurrency | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | inventory-concurrency.service.ts, SQL row locks, transaction specs, DB checks | Run concurrent-order test against disposable PostgreSQL; inspect resulting stock ledger. |
-| Customer order history, details, tracking, cancellation | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | orders.controller.ts, orders.service.ts; web and mobile orders screens | Demonstrate own-order isolation and permitted cancellation boundary. |
+| Customer order history, details, tracking, cancellation | PARTIALLY IMPLEMENTED | orders.controller.ts, orders.service.ts; web and mobile orders screens; backend unit test failure in cancelOrder when payments relation is undefined | Fix and rerun the failing tests in a later application-code change; demonstrate ownership and cancellation boundaries. App source was not modified for this package. |
 | Preparation queue and state management | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | staff-orders.controller.ts, state transition logic in orders.service.ts | Demonstrate STAFF/ADMIN transitions and forbidden transition rejection. |
 | Product and price administration | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | products.controller.ts admin routes; web admin page | Demonstrate ADMIN-only create/update. No category administration endpoint found. |
 | Inventory management | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | inventory.controller.ts, inventory.service.ts; stock movement ledger | Demonstrate staff read and admin adjust, including negative-stock rejection. |
@@ -34,6 +34,7 @@ Status describes source inspection unless runtime evidence is explicitly named. 
 | Security, load, failure, upgrade and rollback testing | PARTIALLY IMPLEMENTED | Unit tests, CI workflow, load and operational scripts | CI is configured but no check output inspected; security scan, upgrade rehearsal, and rollback result are not evidenced. |
 | Monitoring and alerting | NOT IMPLEMENTED | JSON gateway logs and health endpoints are present; no monitoring/alerting stack/config found. | Prepare manual health/log demonstration and describe proposed thresholds; do not claim active alerts. |
 | Assessment accounts, deployed URL, release tag, final declaration | BLOCKED / NOT VERIFIABLE | No deployment/account evidence or tags in inspected local Git state | Candidate must provide actual values, prepare sanitized accounts, tag reviewed release and sign personally. |
+| Submission documentation agrees with manifests | PARTIALLY IMPLEMENTED | Root README describes Expo SDK 51; apps/mobile/package.json declares Expo ~58.0.0 and React Native 0.88.0 | Update the project README in a separately authorized source/documentation change, then verify setup instructions against the selected Expo Go/runtime. |
 
 ## Readiness assessment
 

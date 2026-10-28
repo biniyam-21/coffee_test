@@ -2,7 +2,7 @@
 
 ## Objectives and scope
 
-This plan covers the assessment's functional, negative, authorization, API, database integrity, duplicate request, concurrency, external failure, security, load balancing, backup/restore, upgrade/rollback and mobile requirements. Test code and scripts are present in the repository, but this package did not execute them. Every execution result below is NOT RUN until the candidate records real output.
+This plan covers the assessment's functional, negative, authorization, API, database integrity, duplicate request, concurrency, external failure, security, load balancing, backup/restore, upgrade/rollback and mobile requirements. On 2026-10-29, the web and backend unit suites were executed. The web suite passed; the backend suite had two cancellation-related failures. The disposable PostgreSQL E2E script was attempted but Docker Desktop was not running. Other results remain NOT RUN until the candidate records real output.
 
 ## Environment and prerequisites
 
@@ -37,13 +37,15 @@ This plan covers the assessment's functional, negative, authorization, API, data
 | T-19 | Chapa reconciliation | Leave a pending sandbox transaction then invoke reconcile | Verified state converges; repeated run remains idempotent | NOT RUN; EVIDENCE REQUIRED |
 | T-20 | CORS/security headers | Test allowed/disallowed browser origin and response headers through gateway | Allowed origin only; configured headers present | NOT RUN; EVIDENCE REQUIRED |
 | T-21 | Health/readiness | Query live and ready with healthy and unavailable DB | Live reports process; readiness reflects dependency state | NOT RUN; EVIDENCE REQUIRED |
-| T-22 | Migrations/seed | Run disposable PostgreSQL script from clean empty DB | Generate, migrate, seed and e2e complete with genuine output | NOT RUN; EVIDENCE REQUIRED |
+| T-22 | Migrations/seed | Run disposable PostgreSQL script from clean empty DB | Generate, migrate, seed and e2e complete with genuine output | BLOCKED: Docker Desktop was not running; EVIDENCE REQUIRED |
 | T-23 | Backup/restore | Run test-backup-restore.ps1 against disposable Compose DB | Restore counts equal source; disposable target removed | NOT RUN; EVIDENCE REQUIRED |
 | T-24 | Load distribution/failover | Run load-balancer demo after reviewing port and DB prerequisites | Requests reach both nodes; surviving node handles requests during failure | NOT RUN; EVIDENCE REQUIRED |
 | T-25 | Upgrade/rollback | Snapshot disposable stack; apply candidate update; verify rollback path | App returns to supported prior version with data integrity | NOT RUN; EVIDENCE REQUIRED |
 | T-26 | Mobile physical device | Sign in, place/order-track, trigger an error on actual phone | Principal flow and useful failure state; API reachable over LAN | NOT RUN; BLOCKED until device available |
 | T-27 | Audit/report | Admin queries audit and sales report after synthetic transaction | Correct role restriction and expected aggregate/event | NOT RUN; EVIDENCE REQUIRED |
-| T-28 | Automated unit suites | Run npm test for backend, web, mobile and shared workspaces | Test runner exits successfully with suite summaries | NOT RUN; EVIDENCE REQUIRED |
+| T-28a | Backend unit suite | npm test -w @akufada/backend -- --runInBand | All backend unit tests pass | FAILED: 11 suites passed, 1 failed; 63 tests passed, 2 failed; cancelOrder throws TypeError reading order.payments.some when payments is undefined. See evidence/automated-tests/2026-10-29-unit-test-run.md. |
+| T-28b | Web unit suite | npm test -w @akufada/web -- --runInBand | All web tests pass | PASS: 17 suites, 64 tests. React act() and React Router future-flag warnings were emitted; see evidence/automated-tests/2026-10-29-unit-test-run.md. |
+| T-28c | Mobile and shared unit suites | Run the package test scripts | All mobile/shared tests pass | NOT RUN; EVIDENCE REQUIRED |
 
 ## Existing test assets
 
@@ -51,7 +53,7 @@ Unit test files are under apps/backend/src, apps/web/src, apps/mobile/src and pa
 
 ## Defects and unresolved quality risks
 
-No test execution was recorded, so pass/fail status is unknown. Physical device, TLS, external sandbox, restore, load balancing, monitoring and rollback demonstrations remain evidence-required. Review test scripts for port collisions and ensure Docker and disposable DB behavior before execution.
+The backend cancellation tests expose a defect in the current implementation: cancelOrder assumes order.payments is always an array, but the affected test fixture/query result has payments undefined. It raises TypeError before returning the intended business error. This package did not modify the application. Physical device, TLS, external sandbox, restore, load balancing, monitoring and rollback demonstrations remain evidence-required. Review test scripts for port collisions and ensure Docker and disposable DB behavior before execution.
 
 ## Regression strategy
 
