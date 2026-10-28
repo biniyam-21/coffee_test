@@ -1,0 +1,27 @@
+# Final Submission Checklist
+
+- [ ] Candidate cover sheet completed and checked against the final environment.
+- [ ] Candidate declaration reviewed and signed by the candidate.
+- [ ] Repository URL verified and repository bundle/link includes the required full history.
+- [ ] Required branch and review or pull-request evidence available.
+- [ ] Final release tag exists and matches the demonstration version.
+- [ ] Architecture pack completed and reviewed.
+- [ ] API pack completed and reviewed against live Swagger.
+- [ ] Database pack completed and verified against actual database.
+- [ ] Container and deployment pack completed and verified.
+- [ ] Test pack updated with actual executions and evidence.
+- [ ] Operations pack reviewed against actual scripts and environment.
+- [ ] Clean setup guide executed from a clean environment.
+- [ ] Assessment access guide completed with actual URLs and account process.
+- [ ] Assessment accounts prepared securely; credentials shared out-of-band.
+- [ ] Evidence captured, sanitized, and organized.
+- [ ] Known limitations disclosed.
+- [ ] External sources, reused components, and AI assistance disclosed and confirmed.
+- [ ] No secrets, reusable passwords, tokens, personal data, or unsafe database dumps included.
+- [ ] Physical mobile demonstration prepared and evidence captured.
+- [ ] Load-balancing request distribution or continuity evidence prepared.
+- [ ] Backup and restore evidence prepared using a disposable target.
+- [ ] Upgrade and rollback demonstration prepared and verified.
+- [ ] Final release tested using the documented clean setup process.
+- [ ] Submission channel and deadline confirmed with the assessor.
+- [ ] All submission files reviewed and ready to deliver.

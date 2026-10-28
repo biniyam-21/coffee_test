@@ -23,6 +23,11 @@ Select your fulfillment preferences (custom milk choice, temperature notes) and 
 
 ![Akufada Checkout Page](docs/screenshots/03-checkout-payment.png)
 
+### 4. Administrative Inventory & Operations Dashboard
+Real-time operational dashboard providing complete visibility into catalog items, low-stock threshold badges, atomic inventory restock adjustments, staff management, and immutable system audit logs.
+
+![Akufada Admin Dashboard](docs/screenshots/04-admin-dashboard.png)
+
 ---
 
 ## System Architecture

@@ -14,8 +14,13 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@akufada/shared": ["../../packages/shared/src"],
+      "@akufada/shared/*": ["../../packages/shared/src/*"]
+    }
   },
-  "include": ["src"],
+  "include": ["src", "../../packages/shared/src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

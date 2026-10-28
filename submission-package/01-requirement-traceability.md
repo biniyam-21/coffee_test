@@ -1,0 +1,40 @@
+# Requirement Traceability
+
+Status describes source inspection unless runtime evidence is explicitly named. No runtime verification was performed while preparing this package. “Implemented but not runtime-verified” means relevant code/configuration is present, not that the feature passed a demonstration.
+
+| Requirement | Status | Source and evidence | Verification / remaining work |
+|---|---|---|---|
+| Registration, sign-in, refresh, sign-out, profile | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | apps/backend/src/auth/; web auth pages; mobile auth modals and AuthContext | Run valid/invalid auth tests and show both client sign-in flows. |
+| Menu listing, category filtering, search, product details | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | products.controller.ts; web MenuPage.tsx; mobile MenuScreen.tsx | Runtime API and client checks required. |
+| Item customization | PARTIALLY IMPLEMENTED | Order DTO supports customerNotes; product/item snapshots exist. | Structured per-item customization options and persisted fields are not present in the inspected DTO/schema. Show notes or document the gap. |
+| Customer order placement | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | orders.controller.ts, orders.service.ts, order DTO/schema | Execute order against disposable PostgreSQL and verify payment-path outcomes. |
+| Duplicate request prevention | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | idempotency.service.ts, IdempotencyKey; Idempotency-Key request header | E2E script includes related checks; run it. |
+| Inventory consistency / concurrency | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | inventory-concurrency.service.ts, SQL row locks, transaction specs, DB checks | Run concurrent-order test against disposable PostgreSQL; inspect resulting stock ledger. |
+| Customer order history, details, tracking, cancellation | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | orders.controller.ts, orders.service.ts; web and mobile orders screens | Demonstrate own-order isolation and permitted cancellation boundary. |
+| Preparation queue and state management | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | staff-orders.controller.ts, state transition logic in orders.service.ts | Demonstrate STAFF/ADMIN transitions and forbidden transition rejection. |
+| Product and price administration | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | products.controller.ts admin routes; web admin page | Demonstrate ADMIN-only create/update. No category administration endpoint found. |
+| Inventory management | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | inventory.controller.ts, inventory.service.ts; stock movement ledger | Demonstrate staff read and admin adjust, including negative-stock rejection. |
+| User and role administration | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | users.controller.ts, users.service.ts; admin web UI | Demonstrate ADMIN restriction and self/last-admin safeguards. |
+| Reports and audit events | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | audit.controller.ts, audit.service.ts | Run authenticated report and audit queries; no runtime evidence inspected. |
+| Server-side business rules and consistent transaction handling | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | orders.service.ts, inventory concurrency service, Prisma transactions | Run DB-backed tests and present DB integrity evidence. |
+| Versioned REST API and OpenAPI | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | main.ts global prefix api/v1; Swagger configured at /api/v1/docs | Start server and verify docs endpoint. The bare /api/v1 root is not a registered route. |
+| Authentication and role authorization | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | JWT guard, roles guard/decorators, auth module | Run role-matrix checks; do not infer enforcement from UI hiding alone. |
+| Validation and standardized errors | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | Global ValidationPipe with whitelist/forbid/transform; exception filter | Run invalid-body, unknown-property and error-shape checks. |
+| Logging, correlation, health/readiness | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | Correlation middleware, exception filter, health controller | Confirm generated correlation IDs, live and ready endpoints at runtime. |
+| Chapa external checkout, verification, callback, webhook, reconciliation | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | payment/ service/controller and unit specs | Use test credentials safely; capture init, server verification, signed webhook and reconciliation results. No live transaction was performed. |
+| Mock payment external service and failure handling | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | apps/mock-payment/; PaymentClientService and specs | Run the mock service scenarios and document observable retries/timeouts. |
+| Gateway routing, access logging, CORS, security headers, limits, timeouts | PARTIALLY IMPLEMENTED | deploy/nginx/nginx.conf, deploy/nginx/conf.d/default.conf, backend main.ts | HTTP config includes rate zones, request size, proxy timeouts and headers. TLS overlay exists but certificate provisioning and runtime CORS/TLS checks are not evidenced. |
+| Responsive role-aware web client and clear states | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | apps/web/src/ routes/pages/components | Capture viewport and role-state screenshots; test loading, empty, validation and errors. |
+| Mobile secured API, secure token store, principal order flow | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | apps/mobile/src/, expo-secure-store, api-client.ts | Physical device, authentication, order, and failure evidence is required. Device is unknown. |
+| Separate production-oriented frontend/backend images | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | apps/web/Dockerfile, apps/backend/Dockerfile, Compose | Build images and inspect runtime health; no build execution evidence captured here. |
+| Multi-node/load-balancer request distribution and continuity | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | Compose API nodes and Nginx upstream; scripts/test-load-balancer.js | Script exists but was not run. Capture output and both instance headers. |
+| Database migrations, seeds, least-privilege role | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | Prisma schema/migrations/seed; deploy/postgres/init/01-create-app-role.sh | Disposable Postgres migration/seed script exists; execute and retain sanitized output. |
+| Read replica / replication | NOT IMPLEMENTED | No replica service or replication configuration found in Compose/deploy files. | Explain single-primary recovery approach; assess read replica only if required and time permits. |
+| Backup and restore | IMPLEMENTED BUT NOT RUNTIME-VERIFIED | scripts/backup.ps1, scripts/restore.ps1, scripts/test-backup-restore.ps1 | Run safe disposable restore test and preserve sanitized evidence. Do not run the older destructive restore script against valued data. |
+| Security, load, failure, upgrade and rollback testing | PARTIALLY IMPLEMENTED | Unit tests, CI workflow, load and operational scripts | CI is configured but no check output inspected; security scan, upgrade rehearsal, and rollback result are not evidenced. |
+| Monitoring and alerting | NOT IMPLEMENTED | JSON gateway logs and health endpoints are present; no monitoring/alerting stack/config found. | Prepare manual health/log demonstration and describe proposed thresholds; do not claim active alerts. |
+| Assessment accounts, deployed URL, release tag, final declaration | BLOCKED / NOT VERIFIABLE | No deployment/account evidence or tags in inspected local Git state | Candidate must provide actual values, prepare sanitized accounts, tag reviewed release and sign personally. |
+
+## Readiness assessment
+
+The implementation covers most of the functional coffee-shop scope in source. The repository is not yet evidence-ready: runtime checks, account/device/deployment details, release tag, pull-request evidence, and the assessment demonstration artifacts remain outstanding. Replication and operational monitoring are absent from the inspected configuration. Complete the clean setup and safe verification steps, then update this matrix with real evidence before submission.

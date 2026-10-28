@@ -48,7 +48,7 @@ const UserRoleEditor: React.FC<{
   return (
     <div className="min-w-[220px] space-y-2">
       <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {Object.values(RoleType).map((role) => (
+        {(Object.values(RoleType) as RoleType[]).map((role) => (
           <label key={role} className="inline-flex items-center gap-1.5 text-xs text-slate-700">
             <input
               type="checkbox"
@@ -187,7 +187,7 @@ export const AdminUsersPage: React.FC = () => {
           <label className="text-xs font-semibold text-[#625D66]">Role
             <select value={roleFilter} onChange={(event) => { setRoleFilter(event.target.value as RoleType | ''); setPage(1); }} className="mt-1 block w-full rounded-xl border border-[#E9E3EB] bg-white px-3 py-2.5 text-sm font-normal text-[#242126]">
               <option value="">All roles</option>
-              {Object.values(RoleType).map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
+              {(Object.values(RoleType) as RoleType[]).map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}
             </select>
           </label>
           <label className="text-xs font-semibold text-[#625D66]">Account
