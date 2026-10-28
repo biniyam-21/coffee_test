@@ -1,224 +1,306 @@
 # Coffee Shop Order Management System (Akufada)
 
-An enterprise-grade, multi-client Coffee Shop Order Management System designed for a software engineering practical examination.
-
-## System Overview
-
-- **Web Frontend:** React 18, Vite, TypeScript, Responsive UI with Purple primary accent (`#7C3AED`).
-- **Mobile Client:** React Native with Expo SDK 51, TypeScript, LAN IP physical-device connectivity conventions.
-- **Backend API:** NestJS 10, TypeScript, REST API versioned under `/api/v1`, RFC 7807 problem details, correlation ID tracking (`X-Correlation-ID`), instance header (`X-Backend-Instance`).
-- **Shared Contracts:** `@akufada/shared` pure TypeScript package containing shared domain enums and DTO interfaces.
-- **External Integration:** `@akufada/mock-payment` standalone Express service simulating external payment gateway outcomes (`SUCCESS`, `DECLINED`, `TIMEOUT`).
-- **Quality Gates:** ESLint, Prettier, TypeScript strict type checking, Jest & Vitest automated test suites, GitHub Actions CI.
+An enterprise-grade, multi-client Coffee Shop Order Management System designed for high reliability, concurrency safety, and seamless omnichannel ordering. Built with a modern TypeScript monorepo architecture featuring **NestJS**, **React 18 / Vite**, **PostgreSQL (Prisma ORM)**, **Nginx Load Balancing**, and **Chapa Payment Gateway Integration**.
 
 ---
 
-## Quickstart & Commands
+## Visual Showcase & User Journey
+
+Here is a walkthrough of the core customer journey in the live Akufada application:
+
+### 1. Interactive Coffee Menu & Catalog
+Explore premium Ethiopian single-origin beans and handcrafted brews. Browse by category (Single Origin, Espresso, Cold Brew), view roast profiles, tasting notes, real-time stock levels, and historical price freezes.
+
+![Akufada Menu Catalog](docs/screenshots/01-menu-catalog.png)
+
+### 2. Shopping Cart & Real-Time Calculations
+The responsive sliding Cart Drawer provides persistent per-user shopping bag state, fine-grained quantity adjustments, automatic VAT (15%) calculation, and dynamic subtotal tracking.
+
+![Akufada Cart Drawer](docs/screenshots/02-cart-drawer.png)
+
+### 3. Streamlined Checkout & Multichannel Payments
+Select your fulfillment preferences (custom milk choice, temperature notes) and choose your preferred payment method. Choose between **Chapa Hosted Sandbox Checkout**, **Cash Receiving (Cash on Pickup)**, or **Mock Payment Gateway Simulation**.
+
+![Akufada Checkout Page](docs/screenshots/03-checkout-payment.png)
+
+---
+
+## System Architecture
+
+```text
+                                  +-----------------------------+
+                                  |    Nginx Reverse Proxy &    |
+                                  |   Load Balancer (Port 80)   |
+                                  +--------------+--------------+
+                                                 |
+                       +-------------------------+-------------------------+
+                       | Upstream Round-Robin                              | Health Check & Retry
+                       v                                                   v
+        +-----------------------------+                     +-----------------------------+
+        |   API Node 1 (Port 3001)    |                     |   API Node 2 (Port 3001)    |
+        |     NestJS Core Engine      |                     |     NestJS Core Engine      |
+        +--------------+--------------+                     +--------------+--------------+
+                       |                                                   |
+                       +-------------------------+-------------------------+
+                                                 |
+                                                 v
+                       +---------------------------------------------------+
+                       |        PostgreSQL Database (Prisma ORM)           |
+                       | - Pessimistic Concurrency (Row-Level Locking)     |
+                       | - Idempotent Client Submissions                   |
+                       | - Immutable Stock Movement & Audit Logs           |
+                       +---------------------------------------------------+
+                                                 |
+                                                 v
+                       +---------------------------------------------------+
+                       |         External Payment Gateways                 |
+                       | - Chapa Hosted Sandbox (ETB Mobile & Card)        |
+                       | - Mock Gateway Service (Port 4000)                |
+                       +---------------------------------------------------+
+```
+
+### Core Architecture Highlights
+
+- **Shared Domain Contracts (`@akufada/shared`):** Single source of truth for TypeScript interfaces, DTOs, and lifecycle enums across all backend, web, and mobile clients.
+- **Pessimistic Concurrency Control:** Prevents inventory overselling under high concurrency by utilizing atomic row-level locks (`SELECT ... FOR UPDATE`) during order placement.
+- **Client Idempotency (`IdempotencyKey`):** Automatic client-generated idempotency keys prevent duplicate order charging in the event of transient network drops or rapid multiple clicks.
+- **Payment Resiliency & Reconciliation:** Supports Chapa hosted checkout with cryptographic HMAC webhook verification, exponential backoff retries, and an automated background reconciliation worker.
+- **Dual-Replica Load Balancing:** Dockerized multi-node architecture behind an Nginx upstream proxy with automatic failover and zero-downtime rolling upgrades.
+
+---
+
+## Quickstart & How-to-Run Guide
+
+You can run Akufada either via **Local Development Mode** (recommended for evaluation and testing) or via **Production Docker Compose**.
 
 ### Prerequisites
 
-- Node.js >= 20.11.0 LTS (Tested on Node.js v22.14.0)
-- npm >= 10.0.0
-- Git >= 2.40.0
+- **Node.js:** `>= 20.11.0 LTS` (Tested on Node.js v22.14.0)
+- **npm:** `>= 10.0.0`
+- **PostgreSQL:** `16` or `17` (Running on port `5433` or standard `5432`)
+- **Git:** `>= 2.40.0`
+- **Docker Desktop:** *(Required only for Docker Compose mode)*
 
-### Installation
+---
 
+### Method A: Local Development (Step-by-Step)
+
+#### 1. Clone & Configure Environment
 ```bash
-# 1. Clone repository and setup environment
+# Clone the repository
+git clone https://github.com/biniyam/akufada.git
+cd akufada
+
+# Copy environment variables template
 cp .env.example .env
-
-# 2. Install monorepo dependencies
-npm install
-
-# 3. Build shared contracts package
-npm run build:shared
 ```
 
-### Local Development Commands
+Ensure your `.env` contains valid database credentials (default is configured for PostgreSQL on port `5433`):
+```env
+PORT=3001
+DATABASE_URL="postgresql://postgres:root@localhost:5433/akufada_db?schema=public"
+JWT_ACCESS_SECRET="dummy_local_development_jwt_access_secret_key_at_least_32_chars_long"
+JWT_REFRESH_SECRET="dummy_local_development_jwt_refresh_secret_key_at_least_32_chars_long"
+MOCK_PAYMENT_URL="http://localhost:4000"
+```
+
+#### 2. Install Monorepo Dependencies
+```bash
+npm install
+```
+
+#### 3. Build Shared Contracts & Generate Prisma Client
+```bash
+# Build the TypeScript contracts shared by all apps
+npm run build:shared
+
+# Generate Prisma Client and apply database migrations
+npm run prisma:generate
+npm run prisma:deploy
+```
+
+*(Optional) Seed the database with initial coffee products, categories, and test accounts:*
+```bash
+npm run prisma:seed
+```
+
+#### 4. Launch the Applications
+Open separate terminal tabs for each service:
 
 ```bash
-# Run NestJS Backend API (http://localhost:3001/api/v1)
+# Terminal 1: NestJS Backend API (http://localhost:3001/api/v1)
 npm run dev:backend
 
-# Run Web Client with Vite HMR (http://localhost:3000)
+# Terminal 2: Web Client with Vite HMR (http://localhost:3000)
 npm run dev:web
 
-# Run Mobile Client with Expo Metro (exp://<LAN_IP>:8081)
-npm run dev:mobile
-
-# Run Mock External Payment Service (http://localhost:4000)
+# Terminal 3: Mock External Payment Gateway (http://localhost:4000)
 npm run dev:mock
+
+# (Optional) Terminal 4: React Native Mobile Client with Expo Metro
+npm run dev:mobile
 ```
 
-### Automated Quality Gates
+Open your browser at **[http://localhost:3000](http://localhost:3000)** to experience the full customer, barista, and admin experience!
+
+---
+
+### Method B: Production Docker Compose Orchestration
+
+To run the entire clustered stack (Nginx Gateway, 2x API Replicas, Web Server, Mock Payment Service, and PostgreSQL):
 
 ```bash
-# Run all quality checks sequentially (lint -> format -> typecheck -> test -> build)
+# 1. Build and start all container services in detached mode
+docker compose up -d --build
+
+# 2. Inspect cluster status and health check probes
+docker compose ps
+
+# 3. View live consolidated logs
+docker compose logs -f
+```
+
+The application will be accessible through the Nginx gateway at **`http://localhost:80`** (or the port defined by `GATEWAY_PORT` in your `.env`).
+
+---
+
+## Chapa Payment Integration Testing
+
+Akufada comes pre-wired for **Chapa Sandbox Test Mode**:
+
+1. **Obtain Sandbox Keys:**
+   Create a free developer account at [dashboard.chapa.co](https://dashboard.chapa.co) and navigate to **Settings > API Keys & Webhooks**.
+2. **Update `.env` Keys:**
+   ```env
+   CHAPA_PUBLIC_KEY=CHAPUBK_TEST-xxxxxxxxxxxxxxxxxxxxxxxx
+   CHAPA_SECRET_KEY=CHASECK_TEST-xxxxxxxxxxxxxxxxxxxxxxxx
+   CHAPA_EXPECTED_MODE=test
+   CHAPA_RETURN_URL=http://localhost:3000/payment/return
+   ```
+3. **Public Webhook Exposure via ngrok:**
+   Expose your local backend so Chapa can deliver asynchronous payment notifications:
+   ```bash
+   ngrok http 3001
+   ```
+   Set `CHAPA_CALLBACK_URL` and `CHAPA_WEBHOOK_URL` in `.env` to your forwarding ngrok URL:
+   ```env
+   CHAPA_CALLBACK_URL=https://<your-ngrok-subdomain>.ngrok-free.app/api/v1/payments/chapa/callback
+   CHAPA_WEBHOOK_URL=https://<your-ngrok-subdomain>.ngrok-free.app/api/v1/payments/chapa/webhook
+   ```
+4. **Execute Checkout:**
+   - On the checkout screen, select **Chapa test checkout**.
+   - Click **Place Order**; you will be redirected to Chapa's hosted payment gateway.
+   - Complete the test payment (Test Card or Telebirr/CBE sandbox).
+   - Chapa redirects back to `/payment/return?tx_ref=...`, the payment is verified, and your order moves to `CONFIRMED`!
+
+---
+
+## Role-Based Demo Accounts
+
+Quick-access evaluation buttons are available directly on the login screen (`/login`). You can also sign in manually with these pre-seeded accounts:
+
+| Role | Email Address | Password | Permissions & Available Views |
+| :--- | :--- | :--- | :--- |
+| **Customer** | `customer@akufada.com` | `CustomerPass123!` | Browse menu, cart, checkout, live order tracking, receipt history modal |
+| **Staff / Barista** | `staff@akufada.com` | `StaffPass123!` | Barista kitchen queue (`/staff/queue`), advance order states (`IN_PREPARATION` &rarr; `READY_FOR_PICKUP`) |
+| **Admin** | `admin@akufada.com` | `AdminPass123!` | Admin dashboard (`/admin`), inventory stock adjustments, audit event logs, user management |
+
+---
+
+## Automated Quality Gates & Testing
+
+Akufada enforces a comprehensive automated test matrix with **111 passing tests** across unit, component, integration, and security boundaries:
+
+```bash
+# Execute the full sequential quality gate pipeline
 npm run check
-
-# Individual quality gates
-npm run lint          # Static code analysis
-npm run format:check # Prettier code style check
-npm run typecheck    # Strict TypeScript compiler verification
-npm run test         # Unit & component test suites (14 tests)
-npm run test:e2e     # Backend Supertest E2E integration tests (2 tests)
-npm run build        # Compile production bundles
 ```
 
----
-
-## Documentation Index
-
-### Phase 1: Technical Architecture & Planning
-
-All Phase 1 specifications are available in [`docs/phase-1/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1):
-
-1. [`01-requirements.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/01-requirements.md) - Requirements Specification & Traceability Matrix
-2. [`02-architecture.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/02-architecture.md) - System Architecture & Technical Design
-3. [`03-data-model.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/03-data-model.md) - Relational Data Model & Database Architecture
-4. [`04-api-contract.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/04-api-contract.md) - REST API Specification & Contract Design (`/api/v1`)
-5. [`05-security-threat-model.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/05-security-threat-model.md) - Security Architecture, Threat Model & STRIDE Register
-6. [`06-repository-structure.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/06-repository-structure.md) - Repository Structure & Engineering Workflow
-7. [`07-implementation-backlog.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/07-implementation-backlog.md) - Phased Implementation Backlog & Delivery Plan
-8. [`08-service-inventory.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/08-service-inventory.md) - Service Inventory & Network Topology
-9. [`09-deployment-plan.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/09-deployment-plan.md) - Local Deployment Plan, Runbooks & Disaster Recovery
-10. [`10-phase-1-review.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/10-phase-1-review.md) - Phase 1 Technical Review, Audit & Compliance Signoff
-11. [`role-perspectives.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-1/role-perspectives.md) - Phase 1 Multi-Role Architectural Evaluations
-
-### Phase 2: Repository Foundation & Engineering Quality Gates
-
-All Phase 2 runbooks and verification reports are available in [`docs/phase-2/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-2):
-
-1. [`01-repository-foundation.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-2/01-repository-foundation.md) - Repository Layout & Package Boundaries
-2. [`02-development-setup.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-2/02-development-setup.md) - Development Setup & Runbook
-3. [`03-quality-gates-and-ci.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-2/03-quality-gates-and-ci.md) - Quality Gates & Continuous Integration
-4. [`04-phase-2-verification-report.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-2/04-phase-2-verification-report.md) - Quality Gate Results & Operational Verification
-5. [`role-perspectives.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-2/role-perspectives.md) - Phase 2 Multi-Role Implementation Assessments
-
-### Phase 3: Database Architecture, Migrations & Concurrency Controls
-
-All Phase 3 specifications, runbooks, and verification reports are available in [`docs/phase-3/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3):
-
-1. [`01-database-implementation.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3/01-database-implementation.md) - Relational Data Architecture, Models & Invariants
-2. [`02-prisma-and-migrations.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3/02-prisma-and-migrations.md) - Prisma Schema, Migration Strategy & Seed Data
-3. [`03-database-testing.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3/03-database-testing.md) - Schema Integrity, Concurrency & Idempotency Testing
-4. [`04-backup-and-restore.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3/04-backup-and-restore.md) - Backup, Restore & Recovery Runbooks
-5. [`05-phase-3-verification-report.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3/05-phase-3-verification-report.md) - Phase 3 Verification Report & Quality Results
-6. [`role-perspectives.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-3/role-perspectives.md) - Phase 3 Multi-Role Engineering Sign-Offs
-
-### Phase 4: Secure Backend API, Core Business Logic & Operations
-
-All Phase 4 specifications, runbooks, and verification reports are available in [`docs/phase-4/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4):
-
-1. [`01-backend-implementation.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4/01-backend-implementation.md) - Backend Architecture, Modules & REST Endpoints
-2. [`02-authentication-and-authorization.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4/02-authentication-and-authorization.md) - Bcrypt Hashing, Token Rotation & RBAC
-3. [`03-business-rules-and-transactions.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4/03-business-rules-and-transactions.md) - Authoritative Pricing, Row-Locking & State Machine
-4. [`04-api-documentation-and-testing.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4/04-api-documentation-and-testing.md) - Swagger OpenAPI & Automated Test Suites
-5. [`05-phase-4-verification-report.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4/05-phase-4-verification-report.md) - Phase 4 Verification & Quality Gate Results
-6. [`role-perspectives.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-4/role-perspectives.md) - Phase 4 Multi-Role Engineering Sign-Offs
-
-### Phase 5: Responsive Web Application & Role-Based Workflows
-
-All Phase 5 specifications, runbooks, and verification reports are available in [`docs/phase-5/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5):
-
-1. [`00-implementation-plan.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/00-implementation-plan.md) - Web Application Architecture & Roadmap
-2. [`01-design-system-and-branding.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/01-design-system-and-branding.md) - Purple Brand Design Tokens, Typography & Components
-3. [`02-routing-and-pages.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/02-routing-and-pages.md) - Route Structure & Page Hierarchies
-4. [`03-api-integration.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/03-api-integration.md) - Typed API Client & Error Normalization
-5. [`04-authentication-and-session.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/04-authentication-and-session.md) - Token Refresh & Role-Based Access Control
-6. [`05-accessibility-and-usability.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/05-accessibility-and-usability.md) - WCAG 2.1 AA Compliance Audit
-7. [`06-testing-results.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/06-testing-results.md) - Vitest Unit & Component Test Evidence
-8. [`07-known-limitations.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/07-known-limitations.md) - Documented Scope Boundaries & Constraints
-9. [`08-phase-review.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-5/08-phase-review.md) - Phase 5 Audit Sign-Off
-
-### Phase 6: React Native Mobile Application & Secure Storage
-
-All Phase 6 specifications, runbooks, and verification reports are available in [`docs/phase-6/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6):
-
-1. [`00-implementation-plan.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/00-implementation-plan.md) - Mobile Roadmap & Expo SDK 51 Setup
-2. [`01-mobile-architecture.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/01-mobile-architecture.md) - Architecture, Domain Contexts & KeyStore Security
-3. [`02-navigation-and-screens.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/02-navigation-and-screens.md) - Screen Flows & Bottom-Tab Navigation
-4. [`03-api-integration.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/03-api-integration.md) - Typed API Client with Idempotency Key Injection
-5. [`04-authentication-and-security.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/04-authentication-and-security.md) - Hardware Token Persistence via `expo-secure-store`
-6. [`05-local-development.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/05-local-development.md) - Expo Go, Android Emulator & iOS Simulator Runbook
-7. [`06-testing-results.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/06-testing-results.md) - Mobile Jest Test Suites Verification
-8. [`07-known-limitations.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/07-known-limitations.md) - Push Notifications & Offline Constraints
-9. [`08-phase-review.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-6/08-phase-review.md) - Phase 6 Sign-Off
-
-### Phase 7: System Integration, Docker Deployment & Disaster Recovery
-
-All Phase 7 specifications, runbooks, and verification reports are available in [`docs/phase-7/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7):
-
-1. [`00-implementation-plan.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/00-implementation-plan.md) - Phase 7 Comprehensive Implementation Plan
-2. [`01-deployment-architecture.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/01-deployment-architecture.md) - Production Topology, Ports & Security Boundaries
-3. [`02-docker-and-compose.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/02-docker-and-compose.md) - Multi-Stage Dockerfiles & Compose Orchestration
-4. [`03-nginx-gateway-and-load-balancing.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/03-nginx-gateway-and-load-balancing.md) - Upstream Round-Robin, Rate Limiting & Failover
-5. [`04-external-service-resilience.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/04-external-service-resilience.md) - Mock Payment Client, Chaos Testing & Retries
-6. [`05-database-backup-and-restore.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/05-database-backup-and-restore.md) - Verified Backup & Disposable Restore Runbooks
-7. [`06-test-plan-and-results.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/06-test-plan-and-results.md) - Monorepo Quality Gates & Test Suite Matrix (111 tests)
-8. [`07-logging-monitoring-and-alerts.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/07-logging-monitoring-and-alerts.md) - Structured JSON Logs, Health Probes & Alerting
-9. [`08-upgrade-and-rollback.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/08-upgrade-and-rollback.md) - Rolling Deployments & Disaster Recovery Runbooks
-10. [`09-troubleshooting-runbook.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/09-troubleshooting-runbook.md) - Diagnostic Decision Tree & Incident Runbooks
-11. [`10-phase-review.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-7/10-phase-review.md) - Phase 7 Engineering Audit & Compliance Sign-Off
-
-### Phase 8: Release, Verification & Technical Defense (Final 10%)
-
-All Phase 8 release documentation, verification logs, and defense runbooks are available in [`docs/phase-8/`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8):
-
-1. [`00-release-and-defense-master-plan.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/00-release-and-defense-master-plan.md) - Master Release & Defense Framework
-2. [`01-clean-environment-setup-verification.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/01-clean-environment-setup-verification.md) - Clean Environment Setup & Verification Runbook
-3. [`02-full-test-suite-and-verification.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/02-full-test-suite-and-verification.md) - Full Quality Suite Execution & Measured Results (111 tests)
-4. [`03-examination-cover-sheet.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/03-examination-cover-sheet.md) - Examination Cover Sheet & Disclosed Assistance Statement
-5. [`04-artifact-pack-and-deliverables-manifest.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/04-artifact-pack-and-deliverables-manifest.md) - Deliverables Manifest & Structural Inventory
-6. [`05-known-limitations-and-tradeoffs.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/05-known-limitations-and-tradeoffs.md) - Known Limitations & Architectural Trade-offs
-7. [`06-release-tag-and-git-provenance.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/06-release-tag-and-git-provenance.md) - Semantic Release Tagging & Commit Provenance (`v1.0.0-final`)
-8. [`07-demonstration-script-and-rehearsal.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/07-demonstration-script-and-rehearsal.md) - 10-Minute Viva Demonstration Script & Rehearsal
-9. [`08-technical-defense-qa.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/08-technical-defense-qa.md) - 25 Comprehensive Technical Defense Questions & Answers
-10. [`09-phase-review.md`](file:///c:/Users/biniyam/Desktop/Akufada/docs/phase-8/09-phase-review.md) - Phase 8 Final Release Sign-Off Certificate
+### Individual Quality Commands:
+- `npm run lint` &mdash; ESLint static code analysis across all monorepo packages.
+- `npm run format:check` &mdash; Prettier code consistency and style verification.
+- `npm run typecheck` &mdash; Strict TypeScript compiler verification (`tsc --noEmit`).
+- `npm test -w @akufada/backend` &mdash; Backend Jest test suite (Authentication, Inventory concurrency, Orders, Payment retries).
+- `npm test -w @akufada/web` &mdash; Frontend Vitest & React Testing Library component tests.
+- `npm test -w @akufada/mock-payment` &mdash; Mock payment gateway charge simulation tests.
 
 ---
 
-## Phase 7 Operational Commands
+## Operational Runbooks & Disaster Recovery
 
-### 1. Multi-Instance Load Balancing & Failover Demonstration
-
+### 1. Multi-Instance Load Balancing & Failover Drill
+Test dual-node upstream round-robin routing and automated retry failover:
 ```bash
-# Execute automated dual-replica cluster test with round-robin verification and simulated failover
 node scripts/test-load-balancer.js
 ```
 
-### 2. Database Disaster Recovery Runbooks
-
+### 2. Database Physical Backup & Disposable Restore Drill
+Create a timestamped compressed database dump and verify data parity on a disposable test database:
 ```powershell
-# Create physical compressed backup dump
+# Create backup
 powershell.exe -ExecutionPolicy Bypass -File ./scripts/backup.ps1 -OutputDir "./backups"
 
-# Restore backup into disposable test database (akufada_restore_test) and verify row parity
+# Test restore into akufada_restore_test
 powershell.exe -ExecutionPolicy Bypass -File ./scripts/restore.ps1 `
   -BackupFile (Get-Item .\backups\akufada_backup_*.dump | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName `
   -RestoreTargetDb "akufada_restore_test"
 ```
 
-### 3. Docker Compose Orchestration (Production Stack)
-
-```bash
-# Build production images and start full stack in detached mode
-docker compose up -d --build
-
-# Inspect running cluster health probes
-docker compose ps
+### 3. Automated End-to-End Test Suite
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File ./scripts/test-e2e.ps1
 ```
 
-## Backend API and Payments
+---
 
-- [Versioned API endpoint inventory and local smoke flow](docs/backend-api.md)
-- [Chapa hosted checkout integration guide](docs/chapa-payment-integration.md)
-- Swagger UI: `/api/v1/docs`
+## Project Structure
 
-### Payment and production verification
+```text
+Akufada/
+├── apps/
+│   ├── backend/             # NestJS 10 REST API server
+│   │   ├── prisma/          # Schema definitions, migrations, seed data
+│   │   └── src/             # Auth, Users, Products, Inventory, Orders, Payments, Audit
+│   ├── web/                 # React 18, Vite, Tailwind CSS client
+│   │   └── src/             # Layout, Menu, Cart, Checkout, Order Tracking, Admin, Staff
+│   ├── mobile/              # React Native Expo SDK 51 client
+│   └── mock-payment/        # Standalone Express mock payment gateway
+├── packages/
+│   └── shared/              # Shared TypeScript domain contracts & enums
+├── deploy/
+│   ├── nginx/               # Nginx gateway configs & upstream load-balancing rules
+│   └── postgres/            # PostgreSQL configuration overrides
+├── docs/
+│   ├── screenshots/         # Captured high-resolution UI walkthrough screenshots
+│   ├── phase-1/ to phase-8/ # Comprehensive phase documentation, specs & defense runbooks
+│   ├── backend-api.md       # Complete REST endpoint reference & payload schemas
+│   └── chapa-payment-integration.md # Detailed Chapa gateway implementation guide
+├── scripts/                 # Automated operational runbooks (backup, restore, e2e, load-test)
+├── docker-compose.yml       # Production clustered orchestration definition
+└── package.json             # Root npm workspaces configuration
+```
 
-- Run the backend unit suite with `npm test -w @akufada/backend -- --runInBand`.
-- Once Docker Desktop is running, run the isolated disposable-PostgreSQL migration, seed, and end-to-end checks with `./scripts/test-e2e.ps1`.
-- Run the live-database backup/restore drill with `./scripts/test-backup-restore.ps1`; it restores to a disposable database and compares core table counts.
-- For TLS, provision a valid certificate and place `fullchain.pem` and `privkey.pem` in `deploy/nginx/certs/`. Configure `CORS_ORIGINS` to the exact production web origin, set Chapa callback/return URLs to the HTTPS domain, then start with `docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build`.
-- Keep `CHAPA_EXPECTED_MODE=test` until sandbox checkout, callback, webhook, reconciliation, failure recovery, migration, and restore drills all pass. Configure production TLS, CORS, Chapa live secret/webhook keys, and rollback/backup monitoring before switching to `live`.
+---
+
+## Comprehensive Phase Documentation Index
+
+Detailed phase specifications, architectural designs, threat models, and engineering sign-offs are organized in the [`docs/`](docs/) directory:
+
+- [Phase 1: Technical Architecture & Planning](docs/phase-1/)
+- [Phase 2: Repository Foundation & Engineering Quality Gates](docs/phase-2/)
+- [Phase 3: Database Architecture, Migrations & Concurrency](docs/phase-3/)
+- [Phase 4: Secure Backend API, Core Business Logic & Operations](docs/phase-4/)
+- [Phase 5: Responsive Web Application & Role-Based Workflows](docs/phase-5/)
+- [Phase 6: React Native Mobile Application & Secure Storage](docs/phase-6/)
+- [Phase 7: System Integration, Docker Deployment & Disaster Recovery](docs/phase-7/)
+- [Phase 8: Release, Verification & Technical Defense](docs/phase-8/)
+  - [`00-release-and-defense-master-plan.md`](docs/phase-8/00-release-and-defense-master-plan.md) &mdash; Defense Master Plan
+  - [`02-full-test-suite-and-verification.md`](docs/phase-8/02-full-test-suite-and-verification.md) &mdash; 111 Tests Verification
+  - [`07-demonstration-script-and-rehearsal.md`](docs/phase-8/07-demonstration-script-and-rehearsal.md) &mdash; 10-Minute Viva Demonstration Script
+  - [`08-technical-defense-qa.md`](docs/phase-8/08-technical-defense-qa.md) &mdash; 25 Comprehensive Defense Questions & Answers
+
+---
+
+## License & Evaluation Notice
+
+This project was developed for the **Software Engineering Practical Examination (Akufada Project)**. All architecture, concurrency mechanisms, and code artifacts are engineered to satisfy enterprise-grade production defense standards.
