@@ -1,0 +1,47 @@
+name: Akufada CI Quality Gates
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality-gates:
+    name: Lint, Format, Typecheck, Test & Build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify Code Formatting
+        run: npm run format:check
+
+      - name: Run Static Code Analysis (Lint)
+        run: npm run lint
+
+      - name: Run TypeScript Strict Type Checking
+        run: npm run typecheck
+
+      - name: Run Unit & Scaffold Tests
+        run: npm run test
+
+      - name: Build Application Packages
+        run: npm run build
