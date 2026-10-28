@@ -1,7 +1,7 @@
 # Automated Test Execution Record
 
 Execution date: 2026-10-29 (Africa/Nairobi, UTC+03:00)
-Repository revision: c6eb602 on main
+Repository revision when first test runs started: c6eb602 on main. During the runs, HEAD advanced to 69741ef on main, a commit not created by this task. The backend source was not changed by that commit. The first web-suite result overlapped the revision change and should be superseded by the post-change rerun recorded below.
 Environment: Windows PowerShell, Node.js v22.14.0. npm version could not be resolved because Node/npm reported EPERM while resolving C:\Users\biniyam. No database-backed application instance was running.
 
 ## Web unit suite
@@ -28,6 +28,15 @@ Command: & .\scripts\test-e2e.ps1
 Outcome: BLOCKED before creating a container.
 Observed reason: script reported “Docker Desktop must be running to launch the disposable PostgreSQL container.” Therefore migrations, seed/bootstrap, and database e2e tests did not run.
 Evidence: PowerShell output returned during this session; no database state was changed.
+
+## Web unit suite rerun against current HEAD
+
+Command: npm test -w @akufada/web -- --runInBand
+Revision: 69741ef on main
+Outcome: PASS
+Result: 17 test files passed; 64 tests passed.
+Warnings observed: React update was not wrapped in act() in ToastContext tests; React Router printed two future-flag notices.
+Evidence: Test-runner summary returned during this session; full raw logs were not saved.
 
 ## Scope and follow-up
 

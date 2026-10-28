@@ -44,7 +44,7 @@ This plan covers the assessment's functional, negative, authorization, API, data
 | T-26 | Mobile physical device | Sign in, place/order-track, trigger an error on actual phone | Principal flow and useful failure state; API reachable over LAN | NOT RUN; BLOCKED until device available |
 | T-27 | Audit/report | Admin queries audit and sales report after synthetic transaction | Correct role restriction and expected aggregate/event | NOT RUN; EVIDENCE REQUIRED |
 | T-28a | Backend unit suite | npm test -w @akufada/backend -- --runInBand | All backend unit tests pass | FAILED: 11 suites passed, 1 failed; 63 tests passed, 2 failed; cancelOrder throws TypeError reading order.payments.some when payments is undefined. See evidence/automated-tests/2026-10-29-unit-test-run.md. |
-| T-28b | Web unit suite | npm test -w @akufada/web -- --runInBand | All web tests pass | PASS: 17 suites, 64 tests. React act() and React Router future-flag warnings were emitted; see evidence/automated-tests/2026-10-29-unit-test-run.md. |
+| T-28b | Web unit suite | npm test -w @akufada/web -- --runInBand | All web tests pass | PASS at HEAD 69741ef: 17 suites, 64 tests. React act() and React Router future-flag warnings were emitted; see evidence/automated-tests/2026-10-29-unit-test-run.md. |
 | T-28c | Mobile and shared unit suites | Run the package test scripts | All mobile/shared tests pass | NOT RUN; EVIDENCE REQUIRED |
 
 ## Existing test assets
