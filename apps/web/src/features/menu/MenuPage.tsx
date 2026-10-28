@@ -48,7 +48,7 @@ export const MenuPage: React.FC = () => {
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<Set<string>>(() => new Set());
   const categoryItems = useMemo(() => {
-    if (categories.length === 0) return CATEGORY_ITEMS;
+    if (!Array.isArray(categories) || categories.length === 0) return CATEGORY_ITEMS;
     const categoryIcons = [Coffee, Zap, Milk, Snowflake, Leaf, Croissant];
     return [
       { id: 'all', label: 'All', icon: Coffee, slug: 'all' },
@@ -76,13 +76,15 @@ export const MenuPage: React.FC = () => {
       ]);
 
       if (prodRes.status === 'fulfilled') {
-        setProducts(prodRes.value.data || []);
+        const prodData = prodRes.value?.data;
+        setProducts(Array.isArray(prodData) ? prodData : []);
       } else {
         throw new Error(prodRes.reason?.message || 'Failed to load products');
       }
 
       if (catRes.status === 'fulfilled') {
-        setCategories(catRes.value || []);
+        const catData = catRes.value;
+        setCategories(Array.isArray(catData) ? catData : []);
       }
     } catch (err: unknown) {
       setError(
@@ -122,21 +124,23 @@ export const MenuPage: React.FC = () => {
     });
   };
 
+  const safeProducts = useMemo(() => (Array.isArray(products) ? products : []), [products]);
+
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
+    return safeProducts.filter((p) => {
       const matchesCategory =
         selectedCategory === 'all' ||
-        p.category.slug === selectedCategory ||
-        p.category.name.toLowerCase() === selectedCategory.toLowerCase();
+        p.category?.slug === selectedCategory ||
+        p.category?.name?.toLowerCase() === selectedCategory.toLowerCase();
 
       const matchesSearch =
         searchQuery.trim() === '' ||
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
       return matchesCategory && matchesSearch;
     });
-  }, [products, selectedCategory, searchQuery]);
+  }, [safeProducts, selectedCategory, searchQuery]);
 
   // Derived pagination
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));

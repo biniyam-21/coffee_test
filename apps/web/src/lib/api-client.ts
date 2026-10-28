@@ -115,7 +115,20 @@ export async function apiRequest<T>(endpoint: string, options: RequestOptions = 
       return (await response.json()) as T;
     }
 
-    return (await response.text()) as unknown as T;
+    const text = await response.text();
+    if (contentType && contentType.includes('text/html')) {
+      throw new ApiClientError(
+        response.status,
+        'Invalid Response',
+        'API endpoint returned HTML instead of JSON. Ensure VITE_API_BASE_URL points to the backend server.',
+      );
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as unknown as T;
+    }
   } catch (error) {
     if (error instanceof ApiClientError) {
       throw error;

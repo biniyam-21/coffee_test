@@ -102,14 +102,16 @@ export const KitchenQueuePage: React.FC = () => {
     }
   };
 
+  const safeOrders = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
+
   // Metrics calculations from real order data
   const metrics = useMemo(() => {
-    const activeOrders = orders.filter(
+    const activeOrders = safeOrders.filter(
       (o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED,
     );
-    const inPrep = orders.filter((o) => o.status === OrderStatus.IN_PREPARATION);
-    const ready = orders.filter((o) => o.status === OrderStatus.READY_FOR_PICKUP);
-    const completed = orders.filter((o) => o.status === OrderStatus.COMPLETED);
+    const inPrep = safeOrders.filter((o) => o.status === OrderStatus.IN_PREPARATION);
+    const ready = safeOrders.filter((o) => o.status === OrderStatus.READY_FOR_PICKUP);
+    const completed = safeOrders.filter((o) => o.status === OrderStatus.COMPLETED);
 
     return {
       totalActive: activeOrders.length,
@@ -117,25 +119,25 @@ export const KitchenQueuePage: React.FC = () => {
       ready: ready.length,
       completedToday: completed.length,
     };
-  }, [orders]);
+  }, [safeOrders]);
 
   // Filtered orders list based on active tab
   const filteredOrders = useMemo(() => {
     switch (activeFilter) {
       case 'PREPARING':
-        return orders.filter((o) => o.status === OrderStatus.IN_PREPARATION);
+        return safeOrders.filter((o) => o.status === OrderStatus.IN_PREPARATION);
       case 'READY':
-        return orders.filter((o) => o.status === OrderStatus.READY_FOR_PICKUP);
+        return safeOrders.filter((o) => o.status === OrderStatus.READY_FOR_PICKUP);
       case 'COMPLETED':
-        return orders.filter((o) => o.status === OrderStatus.COMPLETED);
+        return safeOrders.filter((o) => o.status === OrderStatus.COMPLETED);
       case 'ALL':
       default:
         // All active orders in FIFO order (needs prep, preparing, ready)
-        return orders.filter(
+        return safeOrders.filter(
           (o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED,
         );
     }
-  }, [orders, activeFilter]);
+  }, [safeOrders, activeFilter]);
 
   // Reset pagination on tab filter change
   const handleTabChange = (tab: QueueFilterTab) => {

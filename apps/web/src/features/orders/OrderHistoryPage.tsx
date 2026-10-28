@@ -135,12 +135,13 @@ export const OrderHistoryPage: React.FC = () => {
         if (dateBounds.endDate) queryParams.set('endDate', dateBounds.endDate);
 
         const res = await apiRequest<PaginatedResult<Order>>(`/orders?${queryParams.toString()}`);
-        setOrders(res.data || []);
-        setTotalOrders(res.meta?.total || (res.data ? res.data.length : 0));
+        const orderData = Array.isArray(res?.data) ? res.data : [];
+        setOrders(orderData);
+        setTotalOrders(res?.meta?.total ?? orderData.length);
 
         // If modal is currently inspecting an order, refresh state safely without triggering infinite loops
         if (selectedOrderIdRef.current) {
-          const updated = res.data.find((o) => o.id === selectedOrderIdRef.current);
+          const updated = orderData.find((o) => o.id === selectedOrderIdRef.current);
           if (updated) {
             setSelectedOrder((prev) => {
               if (
@@ -179,9 +180,11 @@ export const OrderHistoryPage: React.FC = () => {
     fetchOrders();
   }, [fetchOrders]);
 
+  const safeOrders = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
+
   // Client-side stable sorting on current dataset
   const sortedOrders = useMemo(() => {
-    return [...orders].sort((a, b) => {
+    return [...safeOrders].sort((a, b) => {
       if (sortBy === 'NEWEST') {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       }
@@ -196,7 +199,7 @@ export const OrderHistoryPage: React.FC = () => {
       }
       return 0;
     });
-  }, [orders, sortBy]);
+  }, [safeOrders, sortBy]);
 
   // Restrained Order Overview Metrics (Section 6)
   const orderOverview = useMemo(() => {
@@ -204,7 +207,7 @@ export const OrderHistoryPage: React.FC = () => {
     let inProgressCount = 0;
     let nonCancelledTotalCents = 0;
 
-    for (const ord of orders) {
+    for (const ord of safeOrders) {
       if (ord.status === OrderStatus.COMPLETED) {
         completedCount++;
         nonCancelledTotalCents += ord.totalCents;
@@ -220,7 +223,7 @@ export const OrderHistoryPage: React.FC = () => {
       inProgress: inProgressCount,
       volumeCents: nonCancelledTotalCents,
     };
-  }, [orders, totalOrders]);
+  }, [safeOrders, totalOrders]);
 
   // Order Status semantic styling helper
   const getStatusBadge = (status: OrderStatus) => {
