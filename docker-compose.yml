@@ -1,0 +1,208 @@
+# ==============================================================
+# Coffee Shop Order Management System (Akufada)
+# Production-Oriented Multi-Container Docker Compose Topology
+# ==============================================================
+
+networks:
+  akufada_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+
+services:
+  # ------------------------------------------------------------
+  # Database migration job (must complete before API replicas start)
+  # ------------------------------------------------------------
+  db-migrate:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: akufada_db_migrate
+    restart: "no"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - akufada_net
+
+  # ------------------------------------------------------------
+  # 1. Nginx Reverse Proxy & Load-Balancing Gateway
+  # ------------------------------------------------------------
+  nginx-gateway:
+    image: nginx:1.25-alpine
+    container_name: akufada_gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-80}:80"
+    volumes:
+      - ./deploy/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      api-node-1:
+        condition: service_healthy
+      api-node-2:
+        condition: service_healthy
+      web-client:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - akufada_net
+
+  # ------------------------------------------------------------
+  # 2. Backend API Instance A
+  # ------------------------------------------------------------
+  api-node-1:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: akufada_api_1
+    restart: unless-stopped
+    environment:
+      - INSTANCE_ID=api-node-1
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - MOCK_PAYMENT_URL=http://mock-payment-service:4000
+      - CHAPA_PUBLIC_KEY=${CHAPA_PUBLIC_KEY:-}
+      - CHAPA_SECRET_KEY=${CHAPA_SECRET_KEY:-}
+      - CHAPA_WEBHOOK_SECRET=${CHAPA_WEBHOOK_SECRET:-}
+      - CHAPA_API_URL=${CHAPA_API_URL:-https://api.chapa.co/v1}
+      - CHAPA_CALLBACK_URL=${CHAPA_CALLBACK_URL:-}
+      - CHAPA_RETURN_URL=${CHAPA_RETURN_URL:-}
+      - CHAPA_EXPECTED_MODE=${CHAPA_EXPECTED_MODE:-test}
+      - CHAPA_TIMEOUT_MS=${CHAPA_TIMEOUT_MS:-10000}
+      - CHAPA_RECONCILE_INTERVAL_MS=${CHAPA_RECONCILE_INTERVAL_MS:-300000}
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+      mock-payment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - akufada_net
+
+  # ------------------------------------------------------------
+  # 3. Backend API Instance B (Identical for Load Balancing)
+  # ------------------------------------------------------------
+  api-node-2:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: akufada_api_2
+    restart: unless-stopped
+    environment:
+      - INSTANCE_ID=api-node-2
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
+      - MOCK_PAYMENT_URL=http://mock-payment-service:4000
+      - CHAPA_PUBLIC_KEY=${CHAPA_PUBLIC_KEY:-}
+      - CHAPA_SECRET_KEY=${CHAPA_SECRET_KEY:-}
+      - CHAPA_WEBHOOK_SECRET=${CHAPA_WEBHOOK_SECRET:-}
+      - CHAPA_API_URL=${CHAPA_API_URL:-https://api.chapa.co/v1}
+      - CHAPA_CALLBACK_URL=${CHAPA_CALLBACK_URL:-}
+      - CHAPA_RETURN_URL=${CHAPA_RETURN_URL:-}
+      - CHAPA_EXPECTED_MODE=${CHAPA_EXPECTED_MODE:-test}
+      - CHAPA_TIMEOUT_MS=${CHAPA_TIMEOUT_MS:-10000}
+      - CHAPA_RECONCILE_INTERVAL_MS=${CHAPA_RECONCILE_INTERVAL_MS:-300000}
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+      mock-payment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/v1/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - akufada_net
+
+  # ------------------------------------------------------------
+  # 4. External Mock Payment Service
+  # ------------------------------------------------------------
+  mock-payment-service:
+    build:
+      context: .
+      dockerfile: apps/mock-payment/Dockerfile
+    container_name: akufada_mock_payment
+    restart: unless-stopped
+    environment:
+      - MOCK_PAYMENT_PORT=4000
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - akufada_net
+
+  # ------------------------------------------------------------
+  # 5. Web Frontend Client (SPA Bundle served by Nginx)
+  # ------------------------------------------------------------
+  web-client:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: akufada_web
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - akufada_net
+
+  # ------------------------------------------------------------
+  # 6. Relational Database (PostgreSQL 16)
+  # ------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: akufada_postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-akufada_db}
+      - POSTGRES_USER=${POSTGRES_USER:-akufada_admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ChangeMeInLocalEnv_AdminPassword123!}
+      - POSTGRES_APP_USER=${POSTGRES_APP_USER:-akufada_app}
+      - POSTGRES_APP_PASSWORD=${POSTGRES_APP_PASSWORD:-ChangeMeInLocalEnv_AppPassword123!}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      # Bound strictly to localhost to prevent unwanted external network exposure
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-akufada_admin} -d ${POSTGRES_DB:-akufada_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - akufada_net
