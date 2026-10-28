@@ -83,65 +83,123 @@ You can run Akufada either via **Local Development Mode** (recommended for evalu
 
 ---
 
-### Method A: Local Development (Step-by-Step)
+### Individual Application Run Guides
 
-#### 1. Clone & Configure Environment
-```bash
-# Clone the repository
-git clone https://github.com/biniyam/akufada.git
-cd akufada
+Akufada is built as an integrated monorepo workspace. You can run each component independently during development:
 
-# Copy environment variables template
-cp .env.example .env
+```text
++------------------------------------------------------------------------------------+
+|                               AKUFADA WORKSPACE                                    |
++--------------------------+----------------------------+----------------------------+
+| 1. BACKEND API           | 2. WEB CLIENT              | 3. MOBILE APP (EXPO)       |
+| NestJS 10 REST Engine    | React 18, Vite & Tailwind  | React Native Expo SDK 51   |
+| Port: 3001               | Port: 3000                 | Metro Port: 8081           |
+| http://localhost:3001    | http://localhost:3000      | exp://<LAN_IP>:8081        |
++--------------------------+----------------------------+----------------------------+
 ```
 
-Ensure your `.env` contains valid database credentials (default is configured for PostgreSQL on port `5433`):
-```env
-PORT=3001
-DATABASE_URL="postgresql://postgres:root@localhost:5433/akufada_db?schema=public"
-JWT_ACCESS_SECRET="dummy_local_development_jwt_access_secret_key_at_least_32_chars_long"
-JWT_REFRESH_SECRET="dummy_local_development_jwt_refresh_secret_key_at_least_32_chars_long"
-MOCK_PAYMENT_URL="http://localhost:4000"
-```
+---
 
-#### 2. Install Monorepo Dependencies
+#### 1. Running the Backend API Individually (NestJS + PostgreSQL)
+
+The backend provides authoritative business logic, PostgreSQL database persistence (Prisma ORM), JWT authentication with refresh token rotation, inventory concurrency row-locking, and Chapa payment integration.
+
+**Prerequisites:**
+- Ensure PostgreSQL is active on port `5433` (or `5432` per your `DATABASE_URL`).
+- Make sure shared contracts are compiled: `npm run build:shared`
+
+**Execution Steps:**
 ```bash
-npm install
-```
+# 1. Apply database migrations to ensure all tables, relations, and enums exist
+npx prisma migrate deploy --schema apps/backend/prisma/schema.prisma
 
-#### 3. Build Shared Contracts & Generate Prisma Client
-```bash
-# Build the TypeScript contracts shared by all apps
-npm run build:shared
+# 2. (Optional) Seed initial products, categories, and evaluation accounts
+npm run prisma:seed -w @akufada/backend
 
-# Generate Prisma Client and apply database migrations
-npm run prisma:generate
-npm run prisma:deploy
-```
-
-*(Optional) Seed the database with initial coffee products, categories, and test accounts:*
-```bash
-npm run prisma:seed
-```
-
-#### 4. Launch the Applications
-Open separate terminal tabs for each service:
-
-```bash
-# Terminal 1: NestJS Backend API (http://localhost:3001/api/v1)
+# 3. Start NestJS backend in development/watch mode
 npm run dev:backend
-
-# Terminal 2: Web Client with Vite HMR (http://localhost:3000)
-npm run dev:web
-
-# Terminal 3: Mock External Payment Gateway (http://localhost:4000)
-npm run dev:mock
-
-# (Optional) Terminal 4: React Native Mobile Client with Expo Metro
-npm run dev:mobile
 ```
 
-Open your browser at **[http://localhost:3000](http://localhost:3000)** to experience the full customer, barista, and admin experience!
+**Key Backend Endpoints:**
+- **REST API Base:** `http://localhost:3001/api/v1`
+- **Swagger Interactive Documentation:** `http://localhost:3001/api/v1/docs`
+- **Liveness Health Probe:** `http://localhost:3001/api/v1/health/live`
+- **Readiness Health Probe:** `http://localhost:3001/api/v1/health/ready`
+
+*(Optional External Mock Payment Service: If you wish to test mock payment webhooks alongside Chapa, run `npm run dev:mock` in a separate terminal on port `4000`).*
+
+---
+
+#### 2. Running the Web Client Individually (React + Vite)
+
+The web frontend offers the complete customer coffee ordering experience, sliding cart drawer, multi-method checkout, live visual order tracking, kitchen barista queue, and administrative management dashboard.
+
+**Prerequisites:**
+- Ensure the Backend API is running on port `3001`.
+
+**Execution Steps:**
+```bash
+# In your terminal from the project root:
+npm run dev:web
+```
+
+**Access & Key Views:**
+- **URL:** Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+- **Customer Coffee Catalog:** `http://localhost:3000/` (Browse single origins, categories, add to cart).
+- **Checkout & Multi-Payment:** `http://localhost:3000/checkout` (Chapa Sandbox, Cash on Pickup, Mock Gateway).
+- **Live Order Tracking:** `http://localhost:3000/orders/:id/track` (Real-time progress stepper).
+- **Customer Order History:** `http://localhost:3000/orders` (View receipt history in an aesthetic modal).
+- **Barista Kitchen Queue:** `http://localhost:3000/staff/queue` (Advance orders from Preparation to Pickup).
+- **Admin Management Portal:** `http://localhost:3000/admin` (Inventory adjustments, stock audits, user management).
+
+*(Quick Login Tip: On the `/login` page, you can click the quick-login buttons to instantly test as **Customer**, **Staff**, or **Admin** without typing passwords).*
+
+---
+
+#### 3. Running the Mobile Application Individually (React Native Expo)
+
+The mobile client is built with **Expo SDK 51** and delivers a native mobile customer experience with hardware-backed secure storage.
+
+**Prerequisites & Network Configuration:**
+1. Determine your computer's local Wi-Fi / LAN IP address:
+   ```powershell
+   ipconfig   # On Windows (look for IPv4 Address, e.g., 192.168.1.150)
+   ```
+2. Verify that `EXPO_PUBLIC_API_URL` in your `.env` points to your LAN IP:
+   ```env
+   EXPO_PUBLIC_API_URL=http://<YOUR_LAN_IP>:3001/api/v1
+   ```
+   *(Ensure your physical mobile phone and development machine are connected to the same Wi-Fi network).*
+
+**Execution Steps:**
+```bash
+# Start the Expo Metro bundler:
+npm run dev:mobile
+
+# (If you need to reset the bundler cache, run:)
+npm run dev:mobile -- --clear
+```
+
+**How to Preview & Test the Mobile App:**
+Once Metro starts, it will render an interactive QR code in your terminal:
+- **Physical Phone (iOS & Android):**
+  1. Install the free **Expo Go** application from Google Play Store or Apple App Store.
+  2. Open your phone camera (iOS) or the Expo Go app (Android) and scan the terminal QR code.
+  3. The JavaScript bundle will compile and stream directly onto your device!
+- **Android Emulator:** Press `a` in the terminal to launch the app on an active Android Studio emulator.
+- **iOS Simulator:** Press `i` in the terminal to launch on macOS Xcode iOS Simulator.
+- **Web Browser Preview:** Press `w` in the terminal to immediately open a responsive browser preview.
+
+---
+
+### Component Summary Matrix
+
+| Service | Technology | Port / Address | Command | Primary Function |
+| :--- | :--- | :--- | :--- | :--- |
+| **Backend API** | NestJS 10 + Prisma | `http://localhost:3001` | `npm run dev:backend` | Core REST API, Auth, Database, Payments |
+| **Web Frontend** | React 18 + Vite | `http://localhost:3000` | `npm run dev:web` | Customer Web App, Barista Queue, Admin Portal |
+| **Mobile App** | React Native (Expo SDK 51) | `exp://<LAN_IP>:8081` | `npm run dev:mobile` | Native Mobile Ordering on iOS & Android |
+| **Mock Gateway** | Node.js Express | `http://localhost:4000` | `npm run dev:mock` | External payment failure & timeout simulation |
 
 ---
 
