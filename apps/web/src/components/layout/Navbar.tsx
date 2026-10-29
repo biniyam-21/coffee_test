@@ -222,7 +222,7 @@ export const Navbar: React.FC = () => {
             aria-label="Notifications"
           >
             <Bell className="h-4.5 w-4.5 fill-[#58259A] text-[#58259A]" />
-            <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-[#E7C8A0] ring-2 ring-white" />
+            <span className="absolute top-1.5 right-1.5 flex h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
           </button>
 
           {/* Customer Cart Trigger with ShoppingCart icon, filled primary color & no outline */}
